@@ -1,0 +1,44 @@
+#!/bin/bash
+
+## Save this file on /etc/ssh/sshrc
+
+# Telegram Configuration
+BOT_TOKEN=""
+CHAT_ID=""
+## This is optional, if you use it, uncomment line 43
+#TOPIC_ID=""
+
+USER=$(whoami)
+IP=$(echo $SSH_CONNECTION | cut -d " " -f 1)
+
+if [ -z "$IP" ]; then
+    IP=$(last -i -n 1 "$USER" | awk '{print $(NF-2)}' | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
+fi
+
+IGNORED_IPS="127.0.0.1 189.168.0.1 10.0.0.0"
+
+if echo "$IGNORED_IPS" | grep -q -w "$IP"; then
+    exit 0
+fi
+
+DATE=$(date "+%d/%m/%Y %H:%M:%S")
+HOSTNAME=$(hostname)
+
+if [ ! -z "$IP" ]; then
+    GEOINFO=$(curl -s "http://ip-api.com/json/$IP?fields=country,regionName,city,isp" | jq -r '.country + ", " + .regionName + " - " + .city + " (" + .isp + ")"' 2>/dev/null)
+else
+    GEOINFO="Geolocation not found"
+fi
+
+MESSAGE="*New Server Login*
+🖥️ *Server*: $HOSTNAME
+👤 *User*: $USER
+📍 *IP*: $IP
+🌎 *Location*: $GEOINFO
+📅 *Date/Time*: $DATE"
+
+curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+    -d chat_id="$CHAT_ID" \
+    -d text="$MESSAGE" \
+    #-d message_thread_id="$TOPIC_ID" \
+    -d parse_mode="Markdown" > /dev/null 2>&1 &
