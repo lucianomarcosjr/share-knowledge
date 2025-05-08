@@ -1,0 +1,6 @@
+---
+- name: Aplicar configuração padrão Ubuntu Server
+  hosts: all
+  become: yes
+  roles:
+    - default_template
