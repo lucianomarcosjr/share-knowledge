@@ -1,0 +1,6 @@
+---
+- name: Instalar e configurar PHP 8.2
+  hosts: all
+  become: yes
+  roles:
+    - php8.2_template

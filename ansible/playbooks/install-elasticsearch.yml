@@ -1,0 +1,6 @@
+---
+- name: Instalar e configurar Elasticsearch
+  hosts: all
+  become: yes
+  roles:
+    - elasticsearch_template

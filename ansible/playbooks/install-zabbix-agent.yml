@@ -1,0 +1,30 @@
+---
+- name: Detectar porta SSH ativa e instalar o Zabbix Agent
+  hosts: all
+  gather_facts: yes  # <--- Ativa a coleta de informações do sistema
+  become: yes
+
+  vars:
+    ports_to_try: [51439, 22]
+
+  pre_tasks:
+    - name: Testa qual porta está aberta
+      wait_for:
+        port: "{{ item }}"
+        host: "{{ inventory_hostname }}"
+        timeout: 2
+      register: port_check
+      with_items: "{{ ports_to_try }}"
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: Definir porta válida detectada
+      set_fact:
+        ansible_port: "{{ item.item }}"
+      when: item.elapsed is defined and item.elapsed < 2
+      with_items: "{{ port_check.results }}"
+      delegate_to: localhost
+      run_once: false
+
+  roles:
+    - zabbix_agent_template

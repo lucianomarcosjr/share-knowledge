@@ -1,0 +1,6 @@
+---
+- name: Instalar e configurar Fail2Ban
+  hosts: all
+  become: yes
+  roles:
+    - fail2ban_template

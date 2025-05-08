@@ -1,0 +1,12 @@
+---
+- name: Executar configurações padroes + Fail2ban, Nginx, PHP8.2, MySQL 8, Redis e ElasticSearch no servidor
+  hosts: all
+  become: yes
+  roles:
+    - default
+    - zabbix_agent
+    - fail2ban
+    - php8.2
+    - mysql8
+    - elasticsearch
+    - redis

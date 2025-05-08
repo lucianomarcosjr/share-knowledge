@@ -1,0 +1,6 @@
+---
+- name: Instalar e configurar Redis Server
+  hosts: all
+  become: yes
+  roles:
+    - redis_template
