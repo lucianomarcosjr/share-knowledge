@@ -1,0 +1,62 @@
+---
+- name: Atualizar pacotes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Instalar dependências
+  apt:
+    name:
+      - wget
+      - lsb-release
+      - gnupg
+    state: present
+
+- name: Baixar e adicionar chave GPG do MySQL
+  shell: |
+    wget -qO - https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 | gpg --dearmor -o /usr/share/keyrings/mysql-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/mysql-keyring.gpg
+
+- name: Adicionar repositório oficial do MySQL 8.0
+  copy:
+    dest: /etc/apt/sources.list.d/mysql.list
+    content: "deb [signed-by=/usr/share/keyrings/mysql-keyring.gpg] http://repo.mysql.com/apt/ubuntu/ {{ mysql_codename }} mysql-{{ mysql_version }}"
+    mode: '0644'
+
+- name: Atualizar repositórios APT
+  apt:
+    update_cache: yes
+
+- name: Definir senha root do MySQL no debconf
+  debconf:
+    name: "mysql-community-server"
+    question: "{{ item.question }}"
+    value: "{{ mysql_root_password }}"
+    vtype: "password"
+  loop:
+    - { question: "mysql-community-server/root-pass" }
+    - { question: "mysql-community-server/re-root-pass" }
+
+- name: Instalar MySQL Server {{ mysql_version }}
+  apt:
+    name:
+      - mysql-server={{ mysql_version }}.*
+      - mysql-client={{ mysql_version }}.*
+      - mysql-common={{ mysql_version }}.*
+      - mysql-community-server={{ mysql_version }}.*
+    state: present
+    update_cache: yes
+
+- name: Habilitar e iniciar serviço MySQL
+  systemd:
+    name: mysql
+    enabled: yes
+    state: started
+
+- name: Instalar ferramentas de otimização
+  apt:
+    name:
+      - mysqltuner
+      - percona-toolkit
+    state: present

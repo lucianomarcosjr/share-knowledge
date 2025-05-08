@@ -1,0 +1,5 @@
+zabbix_server: "zabbix.dominio.com.br"
+zabbix_agent_conf: "/etc/zabbix/zabbix_agentd.conf"
+zabbix_metadata: "linux"
+zabbix_version: "7.0"
+zabbix_codename: "ubuntu24.04"

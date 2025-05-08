@@ -1,0 +1,21 @@
+timezone: "America/Sao_Paulo"
+locale: "en_US.UTF-8"
+packages:
+  - software-properties-common
+  - debconf
+  - debconf-utils
+  - net-tools
+  - openssh-server
+  - ssmtp
+  - htop
+  - curl
+  - lynx
+  - iotop
+  - iptables-persistent
+  - git
+  - vim
+  - bc
+  - ntpdate
+  - byobu
+  - python3
+  - jq

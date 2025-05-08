@@ -1,0 +1,47 @@
+---
+- name: Instalar curl
+  apt:
+    name: curl
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Definir codename e versão do pacote Zabbix compatível
+  set_fact:
+    zabbix_codename: >-
+      {% if ansible_distribution_version is version('20.04', '==') %}focal
+      {% elif ansible_distribution_version is version('22.04', '==') %}jammy
+      {% else %}ubuntu{{ ansible_distribution_release }}
+      {% endif %}  
+    zabbix_version: "{{ '6.0' if ansible_distribution_version is version('22.04', '<=') else '7.0' }}"
+
+- name: Baixar e instalar repositório Zabbix
+  shell: |
+    curl -s -o /tmp/zabbix-release.deb https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_{{ zabbix_version }}-1+ubuntu{{ zabbix_codename }}_all.deb
+    dpkg -i /tmp/zabbix-release.deb
+    apt update
+  args:
+    executable: /bin/bash
+  when: ansible_distribution == "Ubuntu"
+
+- name: Instalar zabbix-agent
+  apt:
+    name: zabbix-agent
+    state: present
+
+- name: Configurar zabbix_agentd.conf
+  lineinfile:
+    path: /etc/zabbix/zabbix_agentd.conf
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    backup: no
+  loop:
+    - { key: "Server", value: "{{ zabbix_server | default('zabbix.dominio.com.br') }}" }
+    - { key: "ServerActive", value: "{{ zabbix_server | default('zabbix.dominio.com.br') }}" }
+    - { key: "Hostname", value: "{{ ansible_hostname }}" }
+    - { key: "HostMetadata", value: "linux" }
+
+- name: Habilitar e reiniciar zabbix-agent
+  systemd:
+    name: zabbix-agent
+    enabled: yes
+    state: restarted

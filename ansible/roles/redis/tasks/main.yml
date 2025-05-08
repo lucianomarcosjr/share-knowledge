@@ -1,0 +1,39 @@
+---
+- name: Adicionar repositório PPA do Redis
+  apt_repository:
+    repo: ppa:chris-lea/redis-server
+    state: present
+    update_cache: yes
+
+- name: Instalar Redis Server
+  apt:
+    name: redis-server
+    state: present
+
+- name: Instalar sysfsutils para configurar THP
+  apt:
+    name: sysfsutils
+    state: present
+
+- name: Calcular 25% da memória total em KB e aplicar em redis.conf
+  shell: |
+    mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    max_mem=$((mem_kb / 4))  # 25%
+    echo -e "\nmaxmemory-policy allkeys-lru\nmaxmemory ${max_mem}k" >> /etc/redis/redis.conf
+  args:
+    executable: /bin/bash
+
+- name: Desabilitar Transparent Huge Pages (THP)
+  shell: echo never > /sys/kernel/mm/transparent_hugepage/enabled
+
+- name: Configurar THP persistente no sysfs.conf
+  lineinfile:
+    path: /etc/sysfs.conf
+    line: "kernel/mm/transparent_hugepage/enabled = never"
+    create: yes
+
+- name: Habilitar e reiniciar o Redis
+  systemd:
+    name: redis-server
+    enabled: yes
+    state: restarted

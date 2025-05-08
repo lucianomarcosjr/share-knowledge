@@ -1,0 +1,63 @@
+---
+- name: Adicionar repositório PHP (ppa:ondrej/php)
+  apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+    update_cache: yes
+
+- name: Instalar pacotes PHP 8.2
+  apt:
+    name:
+      - php8.2-cli
+      - php8.2-common
+      - php8.2-fpm
+      - php8.2-cgi
+      - php8.2-mysql
+      - php8.2-curl
+      - php8.2-gd
+      - php8.2-mbstring
+      - php8.2-redis
+      - php8.2-xml
+      - php8.2-soap
+      - php8.2-zip
+    state: present
+
+- name: Ajustar configurações em php-fpm.conf
+  lineinfile:
+    path: /etc/php/8.2/fpm/php-fpm.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^;?emergency_restart_threshold', line: 'emergency_restart_threshold = 10' }
+    - { regexp: '^;?emergency_restart_interval', line: 'emergency_restart_interval = 1m' }
+    - { regexp: '^;?process_control_timeout', line: 'process_control_timeout = 10s' }
+
+- name: Ajustar configurações em www.conf
+  lineinfile:
+    path: /etc/php/8.2/fpm/pool.d/www.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^pm.max_children', line: 'pm.max_children = 180' }
+    - { regexp: '^pm.start_servers', line: 'pm.start_servers = 25' }
+    - { regexp: '^pm.min_spare_servers', line: 'pm.min_spare_servers = 10' }
+    - { regexp: '^pm.max_spare_servers', line: 'pm.max_spare_servers = 30' }
+    - { regexp: '^;?request_terminate_timeout', line: 'request_terminate_timeout = 60s' }
+    - { regexp: '^listen =', line: 'listen = 127.0.0.1:9000' }
+
+- name: Ajustar configurações em php.ini
+  lineinfile:
+    path: /etc/php/8.2/fpm/php.ini
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^disable_functions', line: 'disable_functions = show_source, system, shell_exec, passthru, exec, phpinfo, popen, proc_open, allow_url_fopen, symlink' }
+    - { regexp: '^;?session.save_path', line: 'session.save_path=/tmp' }
+    - { regexp: '^session.gc_maxlifetime', line: 'session.gc_maxlifetime = 28800' }
+    - { regexp: '^session.name', line: 'session.name = tmpID' }
+
+- name: Reiniciar PHP-FPM
+  service:
+    name: php8.2-fpm
+    state: restarted
+    enabled: yes

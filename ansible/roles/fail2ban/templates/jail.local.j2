@@ -1,0 +1,20 @@
+[DEFAULT]
+backend = polling
+destemail = root@localhost
+sender = root@localhost
+action = %(action_mwl)s
+ignoreip = 127.0.0.0/16 10.0.0.0/16
+bantime  = 3600
+maxretry = 10
+
+[sshd]
+enabled = true
+port    = 22
+logpath = %(sshd_log)s
+backend = %(backend)s
+
+[ssh-route]
+enabled = true
+port  = 22
+filter = sshd
+logpath = %(sshd_log)s

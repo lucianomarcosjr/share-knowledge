@@ -1,0 +1,16 @@
+---
+- name: Reconfigurar locale
+  shell: dpkg-reconfigure -f noninteractive locales
+  args:
+    stdin: "{{ locale }}"
+
+- name: Reconfigurar timezone
+  shell: |
+    dpkg-reconfigure -f noninteractive tzdata
+    timedatectl set-timezone {{ timezone }}
+
+
+- name: Reiniciar sshd
+  systemd:
+    name: ssh
+    state: restarted

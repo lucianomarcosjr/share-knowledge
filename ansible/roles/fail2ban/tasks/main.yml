@@ -1,0 +1,26 @@
+---
+- name: Instalar fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    force: yes
+
+- name: Aplicar configuração limpa do jail.local
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ajustar host no sendmail-whois-lines.conf
+  replace:
+    path: /etc/fail2ban/action.d/sendmail-whois-lines.conf
+    regexp: '^\[Fail2Ban\] <name>'
+    replace: '[Fail2Ban] <name> <host>'
+
+- name: Reiniciar fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: restarted

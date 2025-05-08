@@ -1,0 +1,41 @@
+---
+- name: Instalar dependências Java
+  apt:
+    name: openjdk-11-jdk
+    state: present
+    update_cache: yes
+
+- name: Adicionar chave GPG do Elasticsearch
+  apt_key:
+    url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    state: present
+
+- name: Adicionar repositório do Elasticsearch
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/8.x/apt stable main'
+    state: present
+    filename: 'elastic-8.x'
+    update_cache: yes
+
+- name: Instalar Elasticsearch
+  apt:
+    name: elasticsearch
+    state: present
+
+- name: Habilitar e iniciar Elasticsearch
+  systemd:
+    name: elasticsearch
+    enabled: yes
+    state: started
+
+- name: Configurar network.host para 0.0.0.0
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?network.host:.*'
+    line: 'network.host: 0.0.0.0'
+
+- name: Configurar http.port para 9200
+  lineinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: '^#?http.port:.*'
+    line: 'http.port: 9200'

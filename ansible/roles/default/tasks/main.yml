@@ -1,0 +1,77 @@
+---
+- name: Exportar DEBIAN_FRONTEND como noninteractive
+  ansible.builtin.shell: echo 'export DEBIAN_FRONTEND=noninteractive' >> /etc/environment
+
+- name: Identificar IP principal e definir hostname pelo PTR
+  shell: |
+    IP=$(hostname -I | awk '{print $1}')
+    PTR=$(dig +short -x $IP | sed 's/\.$//')
+    echo "$PTR" > /etc/hostname
+    sed -i "s/127.0.1.1.*/127.0.1.1\t$PTR/" /etc/hosts
+    hostnamectl set-hostname "$PTR"
+  args:
+    executable: /bin/bash
+
+- name: Atualizar cache do APT
+  apt:
+    update_cache: yes
+
+- name: Instalar pacotes padrões
+  apt:
+    name: "{{ packages }}"
+    state: present
+
+- name: Configurar timezone
+  lineinfile:
+    path: /etc/timezone
+    line: "{{ timezone }}"
+    create: yes
+  notify: Reconfigurar timezone
+
+- name: Configurar locale
+  lineinfile:
+    path: /etc/default/locale
+    line: "LC_ALL={{ locale }}"
+    create: yes
+  notify: Reconfigurar locale
+
+- name: Desabilitar o UFW
+  systemd:
+    name: ufw
+    state: stopped
+    enabled: no
+
+- name: Copiar regras de firewall
+  copy:
+    src: rules.v4
+    dest: /etc/iptables/rules.v4
+
+- name: Copiar regras de firewall e substituir interface de rede
+  shell: |
+    rede=$(lshw -class network | grep logical | cut -d ":" -f2 | sed 's/\ //g' | head -n1)
+    sed -i "s/eth0/$rede/g" /etc/iptables/rules.v4
+  args:
+    executable: /bin/bash
+
+- name: Configurar o SSHD conforme padrão
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    block: |
+      Port 22
+      HostKey /etc/ssh/ssh_host_rsa_key
+      HostKey /etc/ssh/ssh_host_ecdsa_key
+      HostKey /etc/ssh/ssh_host_ed25519_key
+      SyslogFacility AUTH
+      LogLevel INFO
+      LoginGraceTime 2m
+      StrictModes yes
+      PubkeyAuthentication yes
+      HostbasedAuthentication no
+      IgnoreRhosts yes
+      PasswordAuthentication yes
+      PermitEmptyPasswords no
+      PrintLastLog yes
+      TCPKeepAlive yes
+      X11DisplayOffset 10
+      AllowUsers root rsync
+  notify: Reiniciar sshd
