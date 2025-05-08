@@ -6,6 +6,7 @@
     - default
     - zabbix_agent
     - fail2ban
+    - nginx
     - php8.2
     - mysql8
     - elasticsearch
