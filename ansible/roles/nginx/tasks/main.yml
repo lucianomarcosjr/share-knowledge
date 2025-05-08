@@ -1,0 +1,110 @@
+---
+- name: Atualizar o cache do APT
+  apt:
+    update_cache: yes
+
+- name: Instalar Nginx + Apachetop
+  apt:
+    name:
+      - nginx
+      - apachetop
+    state: present
+
+- name: Instalar pacotes necessários para o Let's Encrypt
+  apt:
+    name:
+      - python3-pip
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Garantir diretórios necessários
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  loop:
+    - /etc/nginx/sites-available
+    - /etc/nginx/sites-enabled
+    - /etc/nginx/conf.d
+    - /var/www/html
+
+- name: Garantir permissão para /var/www/html
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Remover configuração default antiga
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nginx/sites-available/default
+    - /etc/nginx/sites-enabled/default
+
+- name: Copiar configuração principal do nginx
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default('0644') }}"
+    owner: www-data
+    group: www-data
+  loop:
+    - { src: projeto.conf, dest: /etc/nginx/sites-available/projeto.conf }
+
+- name: Criar link simbólico do site
+  file:
+    src: /etc/nginx/sites-available/projeto.conf
+    dest: /etc/nginx/sites-enabled/projeto.conf
+    state: link
+
+- name: Copiar arquivos de configuração extra
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default('0644') }}"
+  loop:
+    - { src: gzip.conf, dest: /etc/nginx/conf.d/gzip.conf }
+
+- name: Criar robots.txt padrão
+  copy:
+    dest: //var/www/html/robots.txt
+    content: |
+      User-Agent: *
+      Disallow: /
+
+- name: Baixar e instalar ngxblocker
+  get_url:
+    url: https://raw.githubusercontent.com/mitchellkrogza/nginx-ultimate-bad-bot-blocker/master/install-ngxblocker
+    dest: /usr/local/sbin/install-ngxblocker
+    mode: '0755'
+
+- name: Executar ngxblocker
+  shell: /bin/sh /usr/local/sbin/install-ngxblocker -x
+  args:
+    chdir: /usr/local/sbin/
+
+- name: Comentar IPs duplicados no globalblacklist.conf
+  shell: |
+    sed -i "s/89.187.173.66\t\t0;/#89.187.173.66\t\t0;/g" /etc/nginx/conf.d/globalblacklist.conf
+    sed -i "s/5.188.120.15\t\t0;/#5.188.120.15\t\t0;/g" /etc/nginx/conf.d/globalblacklist.conf
+    sed -i "s/195.181.163.194\t\t0;/#195.181.163.194\t\t0;/g" /etc/nginx/conf.d/globalblacklist.conf
+    sed -i "s/143.244.38.129\t\t0;/#143.244.38.129\t\t0;/g" /etc/nginx/conf.d/globalblacklist.conf
+    sed -i "s/138.199.57.151\t\t0;/#138.199.57.151\t\t0;/g" /etc/nginx/conf.d/globalblacklist.conf
+  args:
+    executable: /bin/bash
+
+- name: Validar sintaxe do NGINX após limpeza
+  shell: nginx -t
+  register: nginx_test
+  ignore_errors: yes
+
+- name: Falhar se NGINX estiver com erro
+  fail:
+    msg: "Erro na configuração do NGINX após limpeza de duplicados."
+  when: nginx_test.rc != 0
