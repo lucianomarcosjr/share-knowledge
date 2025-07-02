@@ -14,7 +14,7 @@ def get_public_key(token, repo):
         "Authorization": f"Bearer {token}"
     }
     response = requests.get(url, headers=headers)
-    
+
     if response.status_code == 200:
         return response.json()
     else:
@@ -54,43 +54,72 @@ def set_secret(token, repo, secret_name, secret_value, public_key):
     else:
         print(f"Error adding secret '{secret_name}': {response.text}")
 
+def set_variable(token, repo, var_name, var_value):
+    url = f"https://api.github.com/repos/{repo}/actions/variables/{var_name}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}"
+    }
+    data = {
+        "name": var_name,
+        "value": var_value
+    }
+
+    response = requests.put(url, headers=headers, json=data)
+
+    if response.status_code in [201, 204]:
+        print(f"Variable '{var_name}' added successfully!")
+    else:
+        print(f"Error adding variable '{var_name}': {response.text}")
+
 def interactive_input():
-    secrets = {}
+    items = {}
     while True:
-        secret_name = input("Enter secret name (or press ENTER to finish): ").strip()
-        if not secret_name:
+        name = input("Enter name (or press ENTER to finish): ").strip()
+        if not name:
             break
-        secret_value = input(f"Enter value for '{secret_name}': ").strip()
-        secrets[secret_name] = secret_value
-    return secrets
+        value = input(f"Enter value for '{name}': ").strip()
+        items[name] = value
+    return items
 
 def load_secrets_from_file(file_path):
-    secrets = {}
+    items = {}
     if os.path.exists(file_path):
         with open(file_path, "r") as f:
             for line in f:
                 line = line.strip()
                 if "=" in line and not line.startswith("#"):
-                    secret_name, secret_value = line.split("=", 1)
-                    secrets[secret_name.strip()] = secret_value.strip()
+                    name, value = line.split("=", 1)
+                    items[name.strip()] = value.strip()
     else:
         print(f"File '{file_path}' not found.")
-    return secrets
+    return items
 
 def main():
-    print("GitHub Secrets Importer")
-    
+    print("GitHub Secrets/Variables Importer")
+
     github_token = input("Enter your GitHub Token: ").strip()
     repo_name = input("Enter repository name (e.g., owner/repo): ").strip()
-    
-    public_key = get_public_key(github_token, repo_name)
-    if not public_key:
-        return
 
-    print("\nHow would you like to add the secrets?")
+    print("\nDo you want to add:")
+    print("1 - Secrets")
+    print("2 - Variables")
+
+    item_type = None
+    while item_type not in ("1", "2"):
+        item_type = input("Option (1 or 2): ").strip()
+        if item_type not in ("1", "2"):
+            print("Invalid option. Please type 1 or 2.")
+
+    if item_type == "1":
+        public_key = get_public_key(github_token, repo_name)
+        if not public_key:
+            return
+
+    print("\nHow would you like to add the data?")
     print("1 - Enter manually")
-    print("2 - Load from a .secrets file")
-    
+    print("2 - Load from a .secrets/.env file")
+
     choice = None
     while choice not in ("1", "2"):
         choice = input("Option (1 or 2): ").strip()
@@ -98,19 +127,22 @@ def main():
             print("Invalid option. Please type 1 or 2.")
 
     if choice == "2":
-        file_path = input("Enter the path to your .secrets file: ").strip()
-        secrets = load_secrets_from_file(file_path)
+        file_path = input("Enter the path to your file: ").strip()
+        items = load_secrets_from_file(file_path)
     else:
-        secrets = interactive_input()
+        items = interactive_input()
 
-    if not secrets:
-        print("No secrets provided. Exiting...")
+    if not items:
+        print("No data provided. Exiting...")
         return
 
-    for name, value in secrets.items():
-        set_secret(github_token, repo_name, name, value, public_key)
+    for name, value in items.items():
+        if item_type == "1":
+            set_secret(github_token, repo_name, name, value, public_key)
+        else:
+            set_variable(github_token, repo_name, name, value)
 
-    print("All secrets have been added.")
+    print("All items have been added.")
 
 if __name__ == "__main__":
     main()
